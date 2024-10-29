@@ -29,16 +29,19 @@
 				bunt-select.timezone-item(name="timezone", :options="[{id: schedule.timezone, label: schedule.timezone}, {id: userTimezone, label: userTimezone}]", v-model="currentTimezone", @blur="saveTimezone")
 			template(v-else)
 				div.timezone-label.timezone-item.bunt-tab-header-item {{ schedule.timezone }}
-		bunt-tabs.days(v-if="days && days.length > 1", :active-tab="currentDay && currentDay.format()", ref="tabs" :class="showGrid? ['grid-tabs'] : ['list-tabs']")
-			bunt-tab(v-for="day in days", :id="day.format()", :header="day.format(dateFormat)", @selected="changeDay(day)")
+		bunt-tabs.days(v-if="days && days.length > 1", :active-tab="currentDay", ref="tabs" :class="showGrid? ['grid-tabs'] : ['list-tabs']")
+			bunt-tab(v-for="day in days", :id="day.toISODate()", :header="day.toLocaleString(dateFormat)", @selected="changeDay(day)")
 		grid-schedule(v-if="showGrid",
 			:sessions="sessions",
 			:rooms="rooms",
 			:currentDay="currentDay",
 			:now="now",
+			:hasAmPm="hasAmPm",
+			:timezone="currentTimezone",
+			:locale="locale",
 			:scrollParent="scrollParent",
 			:favs="favs",
-			@changeDay="currentDay = $event",
+			@changeDay="setCurrentDay($event)",
 			@fav="fav($event)",
 			@unfav="unfav($event)")
 		linear-schedule(v-else,
@@ -46,9 +49,12 @@
 			:rooms="rooms",
 			:currentDay="currentDay",
 			:now="now",
+			:hasAmPm="hasAmPm",
+			:timezone="currentTimezone",
+			:locale="locale",
 			:scrollParent="scrollParent",
 			:favs="favs",
-			@changeDay="currentDay = $event",
+			@changeDay="setCurrentDay($event)",
 			@fav="fav($event)",
 			@unfav="unfav($event)")
 	bunt-progress-circular(v-else, size="huge", :page="true")
@@ -56,13 +62,12 @@
 		.error-message(v-for="message in errorMessages", :key="message")
 			.btn.btn-danger(@click="errorMessages = errorMessages.filter(m => m !== message)") x
 			div.message {{ message }}
-	#bunt-teleport-target(ref="teleportTarget")
 	a(href="https://pretalx.com", target="_blank", v-if="!onHomeServer").powered-by powered by
 		span.pretalx(href="https://pretalx.com", target="_blank") pretalx
 </template>
 <script>
 import { computed } from 'vue'
-import moment from 'moment-timezone'
+import { DateTime, Settings } from 'luxon'
 import LinearSchedule from '~/components/LinearSchedule'
 import GridSchedule from '~/components/GridSchedule'
 import { findScrollParent, getLocalizedString } from '~/utils'
@@ -85,17 +90,15 @@ export default {
 	provide () {
 		return {
 			eventUrl: this.eventUrl,
-			buntTeleportTarget: computed(() => this.$refs.teleportTarget)
 		}
 	},
 	data () {
 		return {
-			moment,
 			getLocalizedString,
 			scrollParentWidth: Infinity,
 			schedule: null,
 			userTimezone: null,
-			now: moment(),
+			now: DateTime.now(),
 			currentDay: null,
 			currentTimezone: null,
 			showFilterModal: false,
@@ -143,8 +146,8 @@ export default {
 					title: session.title,
 					abstract: session.abstract,
 					do_not_record: session.do_not_record,
-					start: moment.tz(session.start, this.currentTimezone),
-					end: moment.tz(session.end, this.currentTimezone),
+					start: DateTime.fromISO(session.start),
+					end: DateTime.fromISO(session.end),
 					speakers: session.speakers?.map(s => this.speakersLookup[s]),
 					track: this.tracksLookup[session.track],
 					room: this.roomsLookup[session.room]
@@ -158,25 +161,28 @@ export default {
 		},
 		days () {
 			if (!this.sessions) return
-			const days = []
+			let days = []
 			for (const session of this.sessions) {
-				if (days[days.length - 1] && days[days.length - 1].isSame(session.start, 'day')) continue
-				days.push(session.start.clone().startOf('day'))
+				const day = session.start.setZone(this.currentTimezone).startOf('day')
+				if (!days.find(d => d.ts === day.ts)) days.push(day)
 			}
+			days.sort((a, b) => a.diff(b))
 			return days
 		},
 		inEventTimezone () {
 			if (!this.schedule?.talks?.length) return false
-			const example = this.schedule.talks[0].start
-			return moment.tz(example, this.userTimezone).format('Z') === moment.tz(example, this.schedule.timezone).format('Z')
+			return DateTime.local().offset === DateTime.local({ zone: this.schedule.timezone }).offset
 		},
 		dateFormat () {
-			// Defaults to dddd DD. MMMM for: all grid schedules with more than two rooms, and all list schedules with less than five days
+			// Defaults to cccc d. LLLL for: all grid schedules with more than two rooms, and all list schedules with less than five days
 			// After that, we start to shorten the date string, hoping to reduce unwanted scroll behaviour
-			if ((this.showGrid && this.schedule && this.schedule.rooms.length > 2) || !this.days || !this.days.length) return 'dddd DD. MMMM'
-			if (this.days && this.days.length <= 5) return 'dddd DD. MMMM'
-			if (this.days && this.days.length <= 7) return 'dddd DD. MMM'
-			return 'ddd DD. MMM'
+			if ((this.showGrid && this.schedule && this.schedule.rooms.length > 2) || !this.days || !this.days.length) return { weekday: 'long', day: 'numeric', month: 'long'}
+			if (this.days && this.days.length <= 5) return { weekday: 'long', day: 'numeric', month: 'long'}
+			if (this.days && this.days.length <= 7) return { weekday: 'long', day: 'numeric', month: 'short'}
+			return { weekday: 'short', day: 'numeric', month: 'short'}
+		},
+		hasAmPm () {
+			return new Intl.DateTimeFormat(this.locale, {hour: 'numeric'}).resolvedOptions().hour12
 		},
 		eventSlug () {
 			let url = ''
@@ -189,8 +195,10 @@ export default {
 		}
 	},
 	async created () {
-		moment.locale(this.locale)
-		this.userTimezone = moment.tz.guess()
+		// Gotta get the fragment early, before anything else sneakily modifies it
+		const fragment = window.location.hash.slice(1)
+		Settings.defaultLocale = this.locale
+		this.userTimezone = DateTime.local().zoneName
 		let version = ''
 		if (this.version)
 			version = `v/${this.version}/`
@@ -213,9 +221,9 @@ export default {
 		}
 		this.currentTimezone = localStorage.getItem(`${this.eventSlug}_timezone`)
 		this.currentTimezone = [this.schedule.timezone, this.userTimezone].includes(this.currentTimezone) ? this.currentTimezone : this.schedule.timezone
-		this.currentDay = this.days[0]
-		this.now = moment().tz(this.currentTimezone)
-		setInterval(() => this.now = moment().tz(this.currentTimezone), 30000)
+		this.currentDay = this.days[0].toISODate()
+		this.now = DateTime.local({ zone: this.currentTimezone })
+		setInterval(() => this.now = DateTime.local({ zone: this.currentTimezone }), 30000)
 		if (!this.scrollParentResizeObserver) {
 			await this.$nextTick()
 			this.onWindowResize()
@@ -226,13 +234,11 @@ export default {
 		this.apiUrl = window.location.origin + '/api/events/' + this.eventSlug + '/'
 		this.favs = this.pruneFavs(await this.loadFavs(), this.schedule)
 
-		const fragment = window.location.hash.slice(1)
 		if (fragment && fragment.length === 10) {
-			const initialDay = moment(fragment, 'YYYY-MM-DD')
-
-			const filteredDays = this.days.filter(d => d.format('YYYYMMDD') === initialDay.format('YYYYMMDD'))
+			const initialDay = DateTime.fromISO(fragment, { zone: this.currentTimezone })
+			const filteredDays = this.days.filter(d => d.setZone(this.timezone).toISODate() === initialDay.toISODate())
 			if (filteredDays.length) {
-				this.currentDay = filteredDays[0]
+				this.currentDay = filteredDays[0].toISODate()
 			}
 		}
 	},
@@ -268,10 +274,17 @@ export default {
 		// TODO destroy observers
 	},
 	methods: {
+		setCurrentDay (day) {
+			// Find best match among days, because timezones can muddle this
+			const matchingDays = this.days.filter(d => d.setZone(this.currentTimezone).toISODate() === day.setZone(this.currentTimezone).toISODate())
+			if (matchingDays.length) {
+				this.currentDay = matchingDays[0].toISODate()
+			}
+		},
 		changeDay (day) {
-			if (day.isSame(this.currentDay)) return
-			this.currentDay = moment(day, this.currentTimezone).startOf('day')
-			window.location.hash = day.format('YYYY-MM-DD')
+			if (day.startOf('day').toISODate() === this.currentDay) return
+			this.currentDay = day.startOf('day').toISODate()
+			window.location.hash = day.toISODate()
 		},
 		onWindowResize () {
 			this.scrollParentWidth = document.body.offsetWidth

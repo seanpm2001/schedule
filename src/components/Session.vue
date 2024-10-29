@@ -32,9 +32,9 @@ a.c-linear-schedule-session(:class="{faved}", :style="style", :href="link", @cli
 
 </template>
 <script>
-import moment from 'moment-timezone'
+import { DateTime } from 'luxon'
 import MarkdownIt from 'markdown-it'
-import { getLocalizedString, getPrettyDuration } from '~/utils'
+import { getLocalizedString, getPrettyDuration, timeWithoutAmPm, timeAmPm} from '~/utils'
 
 const markdownIt = MarkdownIt({
 	linkify: true,
@@ -60,7 +60,9 @@ export default {
 		hasAmPm: {
 			type: Boolean,
 			default: false
-		}
+		},
+		locale: String,
+		timezone: String
 	},
 	inject: {
 		eventUrl: { default: null },
@@ -95,17 +97,17 @@ export default {
 			// check if 12h or 24h locale
 			if (this.hasAmPm) {
 				return {
-					time: this.session.start.format('h:mm'),
-					ampm: this.session.start.format('A')
+					time: timeWithoutAmPm(this.session.start.setZone(this.timezone), locale),
+					ampm: timeAmPm(this.session.start.setZone(this.timezone), locale)
 				}
 			} else {
 				return {
-					time: moment(this.session.start).format('LT')
+					time: this.session.start.setZone(this.timezone).toLocaleString({ hour: 'numeric', 'minute': 'numeric' })
 				}
 			}
 		},
 		isLive () {
-			return moment(this.session.start).isBefore(this.now) && moment(this.session.end).isAfter(this.now)
+			return this.session.start < this.now && this.session.end > this.now
 		},
 		abstract () {
 			try {

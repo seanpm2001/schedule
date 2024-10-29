@@ -42,7 +42,7 @@ export default defineConfig({
 			fileName: 'pretalx-schedule'
 		},
 		rollupOptions: {
-			external: ['vue', 'buntpapier', 'moment', 'moment-timezone', 'markdown-it'],
+			external: ['vue', 'buntpapier', 'markdown-it'],
 			// output: {
 			// 	globals: {
 			// 		vue: 'Vue'

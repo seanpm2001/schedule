@@ -15,14 +15,24 @@ export function findScrollParent (node) {
 	return findScrollParent(node.parentNode)
 }
 export function getPrettyDuration (start, end) {
-	let minutes = end.diff(start, 'minutes')
-	const hours = Math.floor(minutes / 60)
+	let minutes = end.diff(start).shiftTo('minutes').minutes
 	if (minutes <= 60) {
 		return `${minutes}min`
 	}
+	const hours = Math.floor(minutes / 60)
 	minutes = minutes % 60
 	if (minutes) {
 		return `${hours}h${minutes}min`
 	}
 	return `${hours}h`
+}
+
+export function timeWithoutAmPm (time, locale) {
+	const parts = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: 'numeric' }).formatToParts(time)
+	return parts.filter(part => part.type !== 'dayPeriod').map(part => part.value).join('')
+}
+
+export function timeAmPm (time, locale) {
+	const parts = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: 'numeric' }).formatToParts(time)
+	return parts.filter(part => part.type === 'dayPeriod')[0].value
 }

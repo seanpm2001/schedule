@@ -1,14 +1,17 @@
 <template lang="pug">
 .c-linear-schedule(v-scrollbar.y="")
 	.bucket(v-for="({date, sessions}, index) of sessionBuckets")
-		.bucket-label(:ref="getBucketName(date)", :data-date="date.format()")
-			.day(v-if="index === 0 || date.clone().startOf('day').diff(sessionBuckets[index - 1].date.clone().startOf('day'), 'day') > 0")  {{ date.format('dddd DD. MMMM') }}
-			.time {{ date.format('LT') }}
+		.bucket-label(:ref="getBucketName(date)", :data-date="date.toISO()")
+			.day(v-if="index === 0 || date.startOf('day').diff(sessionBuckets[index - 1].date.startOf('day')).shiftTo('days').days > 0")  {{ date.setZone(timezone).toLocaleString({ weekday: 'long', day: 'numeric', month: 'long' }) }}
+			.time {{ date.setZone(timezone).toLocaleString({ hour: 'numeric', minute: 'numeric' }) }}
 			template(v-for="session of sessions")
 				session(
 					v-if="isProperSession(session)",
 					:session="session",
 					:now="now",
+					:timezone="timezone",
+					:locale="locale",
+					:hasAmPm="hasAmPm",
 					:faved="session.id && favs.includes(session.id)",
 					@fav="$emit('fav', session.id)",
 					@unfav="$emit('unfav', session.id)"
@@ -17,7 +20,7 @@
 					.title {{ getLocalizedString(session.title) }}
 </template>
 <script>
-import moment from 'moment-timezone'
+import { DateTime } from 'luxon'
 import { getLocalizedString } from '~/utils'
 import Session from './Session'
 
@@ -26,19 +29,21 @@ export default {
 	props: {
 		sessions: Array,
 		rooms: Array,
+		locale: String,
+		hasAmPm: Boolean,
+		timezone: String,
 		favs: {
 			type: Array,
 			default () {
 				return []
 			}
 		},
-		currentDay: Object,
+		currentDay: String,
 		now: Object,
 		scrollParent: Element,
 	},
 	data () {
 		return {
-			moment,
 			getLocalizedString,
 			scrolledDay: null
 		}
@@ -47,7 +52,7 @@ export default {
 		sessionBuckets () {
 			const buckets = {}
 			for (const session of this.sessions) {
-				const key = session.start.format()
+				const key = this.getBucketName(session.start)
 				if (!buckets[key]) {
 					buckets[key] = []
 				}
@@ -78,9 +83,9 @@ export default {
 		let lastBucket
 		for (const [ref, el] of Object.entries(this.$refs)) {
 			if (!ref.startsWith('bucket')) continue
-			const date = moment.parseZone(el[0].dataset.date)
+			const date = DateTime.fromISO(el[0].dataset.date, {zone: this.timezone})
 			if (lastBucket) {
-				if (lastBucket.isSame(date, 'date')) continue
+				if (lastBucket.toISODate() === date.toISODate()) continue
 			}
 			lastBucket = date
 			this.observer.observe(el[0])
@@ -90,16 +95,15 @@ export default {
 		let fragmentIsDate = false
 		const fragment = window.location.hash.slice(1)
 		if (fragment && fragment.length === 10) {
-			const initialDay = moment(fragment, 'YYYY-MM-DD')
+			const initialDay = DateTime.fromISO(fragment, {zone: this.timezone})
 			if (initialDay) {
 				fragmentIsDate = true
 			}
 		}
 		if (fragmentIsDate) return
-		const nowIndex = this.sessionBuckets.findIndex(bucket => this.now.isBefore(bucket.date))
-		const beforeIndex = this.sessionBuckets.findIndex(bucket => this.now.isBefore(bucket.date))
+		const nowIndex = this.sessionBuckets.findIndex(bucket => this.now < bucket.date)
 		// do not scroll if the event has not started yet
-		if ((nowIndex < 0) || (beforeIndex === 0)) return
+		if (nowIndex < 0) return
 		const nowBucket = this.sessionBuckets[Math.max(0, nowIndex - 1)]
 		const scrollTop = this.$refs[this.getBucketName(nowBucket.date)]?.[0]?.offsetTop - 90
 		if (this.scrollParent) {
@@ -114,15 +118,15 @@ export default {
 			return !!session.id
 		},
 		getBucketName (date) {
-			return `bucket-${date.format('YYYY-MM-DD-HH-mm')}`
+			return `bucket-${date.toFormat('yyyy-LL-dd-HH-mm')}`
 		},
 		getOffsetTop () {
 			const rect = this.$parent.$el.getBoundingClientRect()
 			return rect.top + window.scrollY
 		},
 		changeDay (day) {
-			if (this.scrolledDay === day) return
-			const dayBucket = this.sessionBuckets.find(bucket => day.isSame(bucket.date, 'day'))
+			if (this.scrolledDay?.toISODate() === day) return
+			const dayBucket = this.sessionBuckets.find(bucket => day === bucket.date.toISODate())
 			if (!dayBucket) return
 			const el = this.$refs[this.getBucketName(dayBucket.date)]?.[0]
 			if (!el) return
@@ -135,12 +139,12 @@ export default {
 		},
 		onIntersect (results) {
 			const intersection = results[0]
-			const day = moment.parseZone(intersection.target.dataset.date).startOf('day')
+			const day = DateTime.fromISO(intersection.target.dataset.date, {zone: this.timezone}).startOf('day')
 			if (intersection.isIntersecting) {
 				this.scrolledDay = day
 				this.$emit('changeDay', this.scrolledDay)
 			} else if (intersection.rootBounds && (intersection.boundingClientRect.y - intersection.rootBounds.y) > 0) {
-				this.scrolledDay = day.subtract(1, 'day')
+				this.scrolledDay = day.minus({days: 1})
 				this.$emit('changeDay', this.scrolledDay)
 			}
 		}
