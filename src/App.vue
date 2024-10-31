@@ -29,7 +29,7 @@
 				bunt-select.timezone-item(name="timezone", :options="[{id: schedule.timezone, label: schedule.timezone}, {id: userTimezone, label: userTimezone}]", v-model="currentTimezone", @blur="saveTimezone")
 			template(v-else)
 				div.timezone-label.timezone-item.bunt-tab-header-item {{ schedule.timezone }}
-		bunt-tabs.days(v-if="days && days.length > 1", :active-tab="currentDay", ref="tabs" :class="showGrid? ['grid-tabs'] : ['list-tabs']")
+		bunt-tabs.days(v-if="days && days.length > 1", v-model="currentDay", ref="tabs" :class="showGrid? ['grid-tabs'] : ['list-tabs']")
 			bunt-tab(v-for="day in days", :id="day.toISODate()", :header="day.toLocaleString(dateFormat)", @selected="changeDay(day)")
 		grid-schedule(v-if="showGrid",
 			:sessions="sessions",
