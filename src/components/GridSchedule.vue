@@ -13,7 +13,6 @@
 		.room(v-if="hasSessionsWithoutRoom", :style="{'grid-area': `1 / ${rooms.length + 2} / auto / -1`}") no location
 		template(v-for="session of sessions")
 			session(
-				v-if="isProperSession(session)",
 				:session="session",
 				:now="now",
 				:locale="locale",
@@ -25,17 +24,6 @@
 				@fav="$emit('fav', session.id)",
 				@unfav="$emit('unfav', session.id)"
 			)
-			.break(v-else, :style="getSessionStyle(session)")
-				.time-box
-					.start(v-if="hasAmPm", class="has-ampm")
-						.time {{ timeWithoutAmPm(session.start.setZone(timezone), locale) }}
-						.ampm {{ timeAmPm(session.start.setZone(timezone), locale) }}
-					.start(v-else)
-						.time {{ session.start.setZone(timezone).toLocaleString({hour: 'numeric', minute: 'numeric'}) }}
-					.duration {{ getPrettyDuration(session.start, session.end) }}
-					.buffer
-				.info
-					.title {{ getLocalizedString(session.title) }}
 </template>
 <script>
 // TODO
@@ -43,7 +31,7 @@
 // - optionally only show venueless rooms
 import { DateTime } from 'luxon'
 import Session from './Session'
-import { getLocalizedString, getPrettyDuration, timeWithoutAmPm, timeAmPm} from '~/utils'
+import { getLocalizedString } from '~/utils'
 
 const getSliceName = function (date) {
 	return `slice-${date.toFormat('LL-dd-HH-mm')}`
@@ -70,7 +58,6 @@ export default {
 	data () {
 		return {
 			getLocalizedString,
-			getPrettyDuration,
 			scrolledDay: null
 		}
 	},
@@ -367,23 +354,6 @@ export default {
 					height: auto
 					width: 200px
 					white-space: normal
-		.break
-			.time-box
-				background-color: $clr-grey-500
-				.start
-					color: $clr-primary-text-dark
-				.duration
-					color: $clr-secondary-text-dark
-			.info
-				background-color: $clr-grey-200
-				border: none
-				justify-content: center
-				align-items: center
-				.title
-					font-size: 20px
-					font-weight: 500
-					color: $clr-secondary-text-light
-					align: center
 	.timeslice
 		color: $clr-secondary-text-light
 		padding: 8px 10px 0 16px

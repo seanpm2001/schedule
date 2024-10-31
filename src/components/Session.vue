@@ -1,34 +1,46 @@
 <template lang="pug">
-a.c-linear-schedule-session(:class="{faved}", :style="style", :href="link", @click="onSessionLinkClick($event, session)", :target="linkTarget")
-	.time-box
-		.start(:class="{'has-ampm': hasAmPm}")
-			.time {{ startTime.time }}
-			.ampm(v-if="startTime.ampm") {{ startTime.ampm }}
-		.duration {{ getPrettyDuration(session.start, session.end) }}
-		.buffer
-		.is-live(v-if="isLive") live
-	.info
-		.title {{ getLocalizedString(session.title) }}
-		.speakers(v-if="session.speakers")
-			.avatars
-				template(v-for="speaker of session.speakers")
-					img(v-if="speaker.avatar_thumbnail_tiny", :src="speaker.avatar_thumbnail_tiny")
-					img(v-else-if="speaker.avatar_thumbnail_default", :src="speaker.avatar_thumbnail_default")
-					img(v-else-if="speaker.avatar", :src="speaker.avatar")
-			.names {{ session.speakers.map(s => s.name).join(', ') }}
-		.abstract(v-if="showAbstract", v-html="abstract")
-		.bottom-info
-			.track(v-if="session.track") {{ getLocalizedString(session.track.name) }}
-			.room(v-if="showRoom && session.room") {{ getLocalizedString(session.room.name) }}
-	.session-icons
-		bunt-icon-button.btn-fav-container(@click.prevent.stop="toggleFav")
-			svg.star(viewBox="0 0 24 24", ref="star")
-				path(d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z")
-		svg.do-not-record(v-if="session.do_not_record", viewBox="0 0 116.59076 116.59076", width="4116.59076mm", height="116.59076mm", fill="none", xmlns="http://www.w3.org/2000/svg")
-			g(transform="translate(-9.3465481,-5.441411)")
-				rect(style="fill:#000000;fill-opacity;stroke:none;stroke-width:11.2589;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", width="52.753284", height="39.619537", x="35.496307", y="43.927021", rx="5.5179553", ry="7.573648")
-				path(style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:18.7997;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", d="M 99.787546,47.04792 V 80.425654 L 77.727407,63.736793 Z")
-				path(style="fill:none;stroke:#b23e65;stroke-width:12;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", d="m 35.553146,95.825578 64.177559,-64.17757 m 16.294055,32.08879 A 48.382828,48.382828 0 0 1 67.641925,112.11961 48.382828,48.382828 0 0 1 19.259099,63.736798 48.382828,48.382828 0 0 1 67.641925,15.353968 48.382828,48.382828 0 0 1 116.02476,63.736798 Z")
+a.c-linear-schedule-session(:class="{faved, isBreak}", :style="style", :href="link", @click="onSessionLinkClick($event, session)", :target="linkTarget")
+	template(v-if="!isBreak")
+		.time-box
+			.start(:class="{'has-ampm': hasAmPm}")
+				.time {{ startTime.time }}
+				.ampm(v-if="startTime.ampm") {{ startTime.ampm }}
+			.duration {{ getPrettyDuration(session.start, session.end) }}
+			.buffer
+			.is-live(v-if="isLive") live
+		.info
+			.title {{ getLocalizedString(session.title) }}
+			.speakers(v-if="session.speakers")
+				.avatars
+					template(v-for="speaker of session.speakers")
+						img(v-if="speaker.avatar_thumbnail_tiny", :src="speaker.avatar_thumbnail_tiny")
+						img(v-else-if="speaker.avatar_thumbnail_default", :src="speaker.avatar_thumbnail_default")
+						img(v-else-if="speaker.avatar", :src="speaker.avatar")
+				.names {{ session.speakers.map(s => s.name).join(', ') }}
+			.abstract(v-if="showAbstract", v-html="abstract")
+			.bottom-info
+				.track(v-if="session.track") {{ getLocalizedString(session.track.name) }}
+				.room(v-if="showRoom && session.room") {{ getLocalizedString(session.room.name) }}
+		.session-icons
+			bunt-icon-button.btn-fav-container(@click.prevent.stop="toggleFav")
+				svg.star(viewBox="0 0 24 24", ref="star")
+					path(d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z")
+			svg.do-not-record(v-if="session.do_not_record", viewBox="0 0 116.59076 116.59076", width="4116.59076mm", height="116.59076mm", fill="none", xmlns="http://www.w3.org/2000/svg")
+				g(transform="translate(-9.3465481,-5.441411)")
+					rect(style="fill:#000000;fill-opacity;stroke:none;stroke-width:11.2589;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", width="52.753284", height="39.619537", x="35.496307", y="43.927021", rx="5.5179553", ry="7.573648")
+					path(style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:18.7997;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", d="M 99.787546,47.04792 V 80.425654 L 77.727407,63.736793 Z")
+					path(style="fill:none;stroke:#b23e65;stroke-width:12;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill", d="m 35.553146,95.825578 64.177559,-64.17757 m 16.294055,32.08879 A 48.382828,48.382828 0 0 1 67.641925,112.11961 48.382828,48.382828 0 0 1 19.259099,63.736798 48.382828,48.382828 0 0 1 67.641925,15.353968 48.382828,48.382828 0 0 1 116.02476,63.736798 Z")
+	template(v-else)
+		.time-box
+			.start(v-if="hasAmPm", class="has-ampm")
+				.time {{ timeWithoutAmPm(session.start.setZone(timezone), locale) }}
+				.ampm {{ timeAmPm(session.start.setZone(timezone), locale) }}
+			.start(v-else)
+				.time {{ session.start.setZone(timezone).toLocaleString({hour: 'numeric', minute: 'numeric'}) }}
+			.duration {{ getPrettyDuration(session.start, session.end) }}
+			.buffer
+		.info
+			.title {{ getLocalizedString(session.title) }}
 
 </template>
 <script>
@@ -81,12 +93,17 @@ export default {
 	data () {
 		return {
 			getPrettyDuration,
-			getLocalizedString
+			getLocalizedString,
+			timeWithoutAmPm,
+			timeAmPm
 		}
 	},
 	computed: {
 		link () {
 			return this.generateSessionLinkUrl({eventUrl: this.eventUrl, session: this.session})
+		},
+		isBreak () {
+			return !this.session.id
 		},
 		style () {
 			return {
@@ -97,8 +114,8 @@ export default {
 			// check if 12h or 24h locale
 			if (this.hasAmPm) {
 				return {
-					time: timeWithoutAmPm(this.session.start.setZone(this.timezone), locale),
-					ampm: timeAmPm(this.session.start.setZone(this.timezone), locale)
+					time: timeWithoutAmPm(this.session.start.setZone(this.timezone), this.locale),
+					ampm: timeAmPm(this.session.start.setZone(this.timezone), this.locale)
 				}
 			} else {
 				return {
@@ -279,4 +296,21 @@ export default {
 			transform: rotate(0deg)
 		100%
 			transform: rotate(72deg)
+.isBreak
+	.time-box
+		background-color: $clr-grey-500
+		.start
+			color: $clr-primary-text-dark
+		.duration
+			color: $clr-secondary-text-dark
+	.info
+		background-color: $clr-grey-200
+		border: none
+		justify-content: center
+		align-items: center
+		.title
+			font-size: 20px
+			font-weight: 500
+			color: $clr-secondary-text-light
+			align: center
 </style>

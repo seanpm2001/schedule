@@ -62,6 +62,7 @@
 		.error-message(v-for="message in errorMessages", :key="message")
 			.btn.btn-danger(@click="errorMessages = errorMessages.filter(m => m !== message)") x
 			div.message {{ message }}
+	#bunt-teleport-target(ref="teleportTarget")
 	a(href="https://pretalx.com", target="_blank", v-if="!onHomeServer").powered-by powered by
 		span.pretalx(href="https://pretalx.com", target="_blank") pretalx
 </template>
@@ -90,6 +91,7 @@ export default {
 	provide () {
 		return {
 			eventUrl: this.eventUrl,
+			buntTeleportTarget: computed(() => this.$refs.teleportTarget)
 		}
 	},
 	data () {

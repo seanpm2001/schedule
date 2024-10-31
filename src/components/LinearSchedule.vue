@@ -6,7 +6,6 @@
 			.time {{ date.setZone(timezone).toLocaleString({ hour: 'numeric', minute: 'numeric' }) }}
 			template(v-for="session of sessions")
 				session(
-					v-if="isProperSession(session)",
 					:session="session",
 					:now="now",
 					:timezone="timezone",
@@ -16,8 +15,6 @@
 					@fav="$emit('fav', session.id)",
 					@unfav="$emit('unfav', session.id)"
 				)
-				.break(v-else)
-					.title {{ getLocalizedString(session.title) }}
 </template>
 <script>
 import { DateTime } from 'luxon'
@@ -113,10 +110,6 @@ export default {
 		}
 	},
 	methods: {
-		isProperSession (session) {
-			// breaks and such don't have ids
-			return !!session.id
-		},
 		getBucketName (date) {
 			return `bucket-${date.toFormat('yyyy-LL-dd-HH-mm')}`
 		},
@@ -165,17 +158,4 @@ export default {
 			padding-left: 16px
 			.day
 				font-weight: 600
-		.break
-			z-index: 10
-			margin: 8px
-			padding: 8px
-			border-radius: 4px
-			background-color: $clr-grey-200
-			display: flex
-			justify-content: center
-			align-items: center
-			.title
-				font-size: 20px
-				font-weight: 500
-				color: $clr-secondary-text-light
 </style>
