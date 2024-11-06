@@ -81,7 +81,9 @@ export default {
 	data () {
 		return {
 			getPrettyDuration,
-			getLocalizedString
+			getLocalizedString,
+			timeWithoutAmPm,
+			timeAmPm
 		}
 	},
 	computed: {
@@ -97,8 +99,8 @@ export default {
 			// check if 12h or 24h locale
 			if (this.hasAmPm) {
 				return {
-					time: timeWithoutAmPm(this.session.start.setZone(this.timezone), locale),
-					ampm: timeAmPm(this.session.start.setZone(this.timezone), locale)
+					time: timeWithoutAmPm(this.session.start.setZone(this.timezone), this.locale),
+					ampm: timeAmPm(this.session.start.setZone(this.timezone), this.locale)
 				}
 			} else {
 				return {
